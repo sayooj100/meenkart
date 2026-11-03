@@ -1,0 +1,20 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+
+# Environment files with private secrets
+.env
+.env.local
+.env.*.local
+credentials.json
+
+# Logs & temp
+*.log
+.DS_Store
+Thumbs.db

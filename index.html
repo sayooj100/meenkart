@@ -1,0 +1,1142 @@
+<!DOCTYPE html>
+<html lang="ml">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>മീൻ കട — Meen Kada | Village Fresh Fish</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" type="image/x-icon" href="./favicon.ico">
+  <link rel="icon" type="image/png" href="./assets/favicon.png">
+  
+  <!-- Google Fonts: Poppins (English) & Noto Sans Malayalam (Malayalam) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Malayalam:wght@400;600;700;800&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    /* ================================================
+       MEEN KADA — Stage 5B: Order form + backend order API
+       Status:
+       ✅ Stage 1: UI
+       ✅ Stage 2: live data from Sheets
+       ✅ Stage 5A: product detail popup
+       ✅ Stage 5B: order form + backend → orders sheet (this stage)
+       ⏳ Stage 3: real images from Cloudflare
+       ⏳ Stage 6: Telegram bot for order management
+       ================================================ */
+
+    :root {
+      /* Color palette inspired by brand logo: deep forest / coastal teal, fresh tones & warm accents */
+      --color-primary: #055a33;       /* Deep rich coastal teal / emerald from logo */
+      --color-primary-dark: #034225;  /* Darker shade for active/hover */
+      --color-primary-light: #e8f3ee; /* Soft tint for badges and backgrounds */
+      --color-accent: #f77f00;        /* Warm vibrant orange for discounts and highlights */
+      --color-accent-dark: #e06c00;
+      
+      --color-bg: #f8faf9;            /* Crisp, clean, fresh off-white */
+      --color-card-bg: #ffffff;
+      --color-border: #e2e9e5;
+      
+      --color-text-main: #14211b;     /* Deep dark green-gray for sharp legibility */
+      --color-text-muted: #62776c;    /* Neutral soft slate for secondary labels */
+      --color-text-light: #8e9f96;
+      
+      --font-en: 'Poppins', sans-serif;
+      --font-ml: 'Noto Sans Malayalam', sans-serif;
+
+      --radius-sm: 6px;
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --shadow-sm: 0 2px 6px rgba(5, 90, 51, 0.06);
+      --shadow-md: 0 4px 14px rgba(5, 90, 51, 0.09);
+      --shadow-card-hover: 0 8px 22px rgba(5, 90, 51, 0.14);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: var(--font-en);
+      background-color: var(--color-bg);
+      color: var(--color-text-main);
+      line-height: 1.4;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ================= HEADER (Sticky) ================= */
+    header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background-color: #ffffff;
+      padding: 10px 16px 8px;
+      text-align: center;
+      border-bottom: 2px solid var(--color-primary);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .brand-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .brand-logo {
+      height: 56px;
+      width: auto;
+      max-width: 180px;
+      object-fit: contain;
+      border-radius: 8px;
+      display: block;
+      margin: 0 auto 4px;
+    }
+
+    .brand-title {
+      font-family: var(--font-ml);
+      font-size: 1.35rem;
+      font-weight: 800;
+      color: var(--color-primary);
+      line-height: 1.2;
+      letter-spacing: -0.2px;
+    }
+
+    .brand-tagline {
+      font-size: 0.72rem;
+      color: var(--color-text-muted);
+      font-weight: 500;
+      margin-top: 2px;
+      letter-spacing: 0.3px;
+    }
+
+    /* ================= MAIN CONTAINER ================= */
+    main {
+      flex: 1;
+      width: 100%;
+      max-width: 1100px;
+      margin: 0 auto;
+      padding: 14px 12px 28px;
+    }
+
+    /* ================= PRODUCT GRID ================= */
+    /* Mobile First: 2 square items per row */
+    .product-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    /* Tablet & Desktop: expand to 3-4 per row */
+    @media (min-width: 768px) {
+      .product-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 18px;
+        padding: 8px 0;
+      }
+      main {
+        padding: 24px 20px 40px;
+      }
+    }
+
+    @media (min-width: 1024px) {
+      .product-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 20px;
+      }
+    }
+
+    /* ================= PRODUCT CARD ================= */
+    .product-card {
+      background-color: var(--color-card-bg);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: var(--shadow-sm);
+      cursor: pointer;
+      transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+    }
+
+    .product-card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+      border-color: #cbdad1;
+    }
+
+    .product-card:active {
+      transform: scale(0.985);
+    }
+
+    /* Square Image Container */
+    .product-image {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background-color: #eef3f0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border-bottom: 1px solid var(--color-border);
+    }
+
+    .product-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .placeholder-icon {
+      font-size: 2.5rem;
+      user-select: none;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.08));
+      transition: transform 0.3s ease;
+    }
+
+    .product-card:hover .placeholder-icon {
+      transform: scale(1.08);
+    }
+
+    /* Discount Badge (Top-left corner of image) */
+    .discount-badge {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      background-color: var(--color-accent);
+      color: #ffffff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      padding: 3px 7px;
+      border-radius: 999px;
+      box-shadow: 0 2px 5px rgba(247, 127, 0, 0.4);
+      z-index: 2;
+    }
+
+    /* Product Card Details */
+    .product-info {
+      padding: 10px 10px 12px;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      justify-content: space-between;
+    }
+
+    .name-block {
+      margin-bottom: 6px;
+    }
+
+    .name-ml {
+      font-family: var(--font-ml);
+      font-size: 0.95rem; /* ~15px */
+      font-weight: 700;
+      color: var(--color-text-main);
+      line-height: 1.25;
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .name-en {
+      font-size: 0.75rem; /* ~12px */
+      font-weight: 500;
+      color: var(--color-text-muted);
+      margin-top: 2px;
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Pricing */
+    .price-block {
+      display: flex;
+      align-items: baseline;
+      gap: 6px;
+      margin-top: auto;
+      margin-bottom: 9px;
+    }
+
+    .selling-price {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--color-primary);
+      letter-spacing: -0.3px;
+    }
+
+    .original-price {
+      font-size: 0.75rem;
+      color: var(--color-text-light);
+      text-decoration: line-through;
+      font-weight: 400;
+    }
+
+    /* Buy Now CTA Button */
+    .btn-buy, .buy-btn {
+      width: 100%;
+      background-color: var(--color-primary);
+      color: #ffffff;
+      border: none;
+      padding: 9px 8px;
+      border-radius: var(--radius-sm);
+      font-family: var(--font-en);
+      font-size: 0.8rem;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      cursor: pointer;
+      box-shadow: 0 2px 6px rgba(5, 90, 51, 0.22);
+      transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-buy:hover, .buy-btn:hover {
+      background-color: var(--color-primary-dark);
+      box-shadow: 0 3px 8px rgba(5, 90, 51, 0.32);
+    }
+
+    .btn-buy:active, .buy-btn:active {
+      transform: scale(0.97);
+      background-color: var(--color-primary-dark);
+      box-shadow: 0 1px 3px rgba(5, 90, 51, 0.2);
+    }
+
+    /* ================= ASYNC STATUS STATES ================= */
+    .loading, .empty, .error {
+      grid-column: 1 / -1;      /* span both columns */
+      text-align: center;
+      padding: 40px 20px;
+      font-size: 14px;
+      color: #666;
+    }
+    .error { color: #c0392b; }
+    .loading { color: #0a7ea4; }
+
+    /* ================= OVERLAYS (Product & Order) ================= */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+    }
+    .overlay.hidden { display: none; }
+
+    .overlay-backdrop {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      backdrop-filter: blur(2px);
+    }
+
+    .overlay-content {
+      position: relative;
+      background: #fff;
+      width: 100%;
+      max-width: 500px;
+      max-height: 92vh;
+      overflow-y: auto;
+      border-radius: 20px 20px 0 0;
+      padding: 20px 20px 24px;
+      animation: slideUp 0.25s ease-out;
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100%); }
+      to   { transform: translateY(0); }
+    }
+
+    @media (min-width: 768px) {
+      .overlay { align-items: center; }
+      .overlay-content {
+        border-radius: 20px;
+        max-height: 88vh;
+        padding: 28px;
+      }
+    }
+
+    .overlay-close {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: none;
+      background: rgba(0, 0, 0, 0.06);
+      font-size: 18px;
+      cursor: pointer;
+      z-index: 2;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .overlay-close:hover { background: rgba(0, 0, 0, 0.12); }
+
+    .detail-image {
+      width: 100%;
+      aspect-ratio: 1 / 1;
+      background: #f0f0f0;
+      border-radius: 12px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+    .detail-image img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .detail-image .placeholder-icon { font-size: 64px; }
+
+    .detail-name-ml {
+      font-size: 22px;
+      font-weight: 700;
+      color: #1a1a1a;
+      margin: 0 0 2px;
+      font-family: var(--font-ml);
+    }
+    .detail-name-en {
+      font-size: 14px;
+      color: #888;
+      margin: 0 0 14px;
+    }
+
+    .detail-price-row {
+      display: flex;
+      align-items: baseline;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+    .detail-price {
+      font-size: 26px;
+      font-weight: 700;
+      color: #0a7ea4;
+    }
+    .detail-original-price {
+      font-size: 15px;
+      color: #999;
+      text-decoration: line-through;
+    }
+    .detail-discount-badge {
+      font-size: 12px;
+      font-weight: 600;
+      color: #fff;
+      background: #f77f00;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+
+    .detail-section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #666;
+      margin: 18px 0 8px;
+    }
+
+    .detail-note {
+      font-size: 14px;
+      color: #333;
+      line-height: 1.5;
+      margin: 0;
+      padding: 10px 12px;
+      background: #fff8e6;
+      border-left: 3px solid #f77f00;
+      border-radius: 6px;
+    }
+
+    .detail-features {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+    .detail-features li {
+      font-size: 14px;
+      color: #333;
+      padding: 6px 0;
+      line-height: 1.5;
+    }
+
+    .detail-buy-btn {
+      width: 100%;
+      background: #0a7ea4;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      margin-top: 20px;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .detail-buy-btn:hover { background: #075e7a; }
+    .detail-buy-btn:active { transform: scale(0.98); }
+
+    /* ================= ORDER FORM STYLES ================= */
+    .form-title { font-size: 20px; font-weight: 700; margin: 0 0 4px; color: #1a1a1a; }
+    .form-subtitle { font-size: 14px; color: #666; margin: 0 0 16px; font-family: var(--font-ml); }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      margin: 12px 0 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #d0d0d0;
+      border-radius: 10px;
+      font-size: 15px;
+      font-family: inherit;
+      box-sizing: border-box;
+    }
+    .form-input:focus {
+      outline: none;
+      border-color: #0a7ea4;
+      box-shadow: 0 0 0 3px rgba(10, 126, 164, 0.1);
+    }
+
+    /* Quantity Stepper Controls */
+    .quantity-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .qty-btn {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+      border-radius: 10px;
+      border: 1px solid #d0d0d0;
+      background: #f7f9fa;
+      color: #1a1a1a;
+      font-size: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      user-select: none;
+    }
+    .qty-btn:hover {
+      background: #e9ecef;
+      border-color: #b8c1c8;
+    }
+    .qty-btn:active {
+      transform: scale(0.94);
+      background: #dee2e6;
+    }
+    .quantity-control .form-input {
+      text-align: center;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .form-btn {
+      background: #f3f4f6;
+      border: 1px dashed #d0d0d0;
+      cursor: pointer;
+      text-align: left;
+      font-weight: 500;
+    }
+    .form-btn:hover { background: #e9ecf0; }
+
+    .form-hint { font-size: 12px; color: #888; margin: 6px 0 0; }
+
+    .form-total {
+      font-size: 17px;
+      font-weight: 700;
+      color: #0a7ea4;
+      margin: 16px 0;
+    }
+
+    .form-submit {
+      width: 100%;
+      background: #0a7ea4;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 600;
+      padding: 14px;
+      border: none;
+      border-radius: 12px;
+      margin-top: 12px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .form-submit:hover { background: #075e7a; }
+    .form-submit:disabled { background: #7fb3c7; cursor: not-allowed; }
+
+    .form-error {
+      font-size: 13px;
+      color: #c0392b;
+      background: #fee;
+      padding: 8px 10px;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+    .form-error.hidden { display: none; }
+
+    .success-icon { font-size: 48px; text-align: center; margin: 8px 0; }
+
+    .success-order-id {
+      font-size: 22px;
+      font-weight: 700;
+      color: #0a7ea4;
+      text-align: center;
+      margin: 4px 0 16px;
+      letter-spacing: 0.5px;
+    }
+
+    .success-summary {
+      background: #f7f9fb;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin: 12px 0;
+      font-size: 14px;
+    }
+    .success-summary > div {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+    }
+
+    .wa-open-btn {
+      display: block;
+      text-align: center;
+      background: #25d366;
+      color: #fff;
+      font-size: 15px;
+      font-weight: 600;
+      padding: 13px;
+      border-radius: 12px;
+      text-decoration: none;
+      margin-top: 14px;
+      margin-bottom: 10px;
+      transition: background 0.15s;
+    }
+    .wa-open-btn:hover { background: #1da851; }
+
+    /* ================= FOOTER ================= */
+    footer {
+      background-color: #ffffff;
+      border-top: 1px solid var(--color-border);
+      padding: 20px 16px;
+      text-align: center;
+      margin-top: auto;
+    }
+
+    .footer-text {
+      font-size: 0.78rem;
+      color: var(--color-text-muted);
+      font-weight: 400;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Sticky Header -->
+  <header>
+    <div class="brand-container">
+      <img src="./assets/logo.png" alt="മീൻ കട Logo" class="brand-logo" onerror="this.style.display='none'">
+      <h1 class="brand-title">മീൻ കട</h1>
+      <p class="brand-tagline">Fresh fish, delivered to your home</p>
+    </div>
+  </header>
+
+  <!-- Product Listing Main Section -->
+  <main>
+    <div class="product-grid" id="productGrid">
+      <!-- Dynamically populated via renderProducts(data) or load states -->
+    </div>
+  </main>
+
+  <!-- Product Detail Popup Overlay (z-index: 999) -->
+  <div id="product-overlay" class="overlay hidden">
+    <div class="overlay-backdrop"></div>
+    <div class="overlay-content">
+      <button class="overlay-close" aria-label="Close">✕</button>
+      <div id="overlay-body"></div>
+    </div>
+  </div>
+
+  <!-- Order Form Overlay (z-index: 1000) -->
+  <div id="order-overlay" class="overlay hidden" style="z-index: 1000;">
+    <div class="overlay-backdrop"></div>
+    <div class="overlay-content">
+      <button class="overlay-close" aria-label="Close">✕</button>
+      <div id="order-body"></div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p class="footer-text">© 2026 Meen Kada · Village fresh fish</p>
+  </footer>
+
+  <script>
+    // ============ CONFIG ============
+    const API_BASE = (window.location.protocol === "file:" || (!window.location.port && window.location.hostname === ""))
+      ? "http://localhost:5000"
+      : "";
+    const API_URL = `${API_BASE}/api/fish`;
+    const ORDER_API_URL = `${API_BASE}/api/order`;
+    const SHOP_WHATSAPP = "919946549544"; // Updated WhatsApp redirect number
+
+    // Variable to track location link scoped to current order
+    let currentMapLink = "";
+
+    // ============ BUY NOW HANDLER ============
+    function handleBuyClick(product) {
+      openOrderForm(product);
+    }
+
+    // ============ ORDER FORM HANDLERS ============
+    function openOrderForm(product) {
+      const orderOverlay = document.getElementById("order-overlay");
+      const orderBody = document.getElementById("order-body");
+      if (!orderOverlay || !orderBody) return;
+
+      currentMapLink = "";
+
+      orderBody.innerHTML = `
+        <h2 class="form-title">Place your order</h2>
+        <p class="form-subtitle">${product.nameMl} · ₹${product.price}/kg</p>
+
+        <label class="form-label" for="order-name">Your name</label>
+        <input type="text" id="order-name" class="form-input" placeholder="Full name">
+
+        <label class="form-label" for="order-phone">Phone number</label>
+        <input type="tel" id="order-phone" class="form-input"
+               placeholder="10-digit mobile" maxlength="10" inputmode="numeric">
+
+        <label class="form-label" for="order-kg">Quantity (kg)</label>
+        <div class="quantity-control">
+          <button type="button" class="qty-btn" id="qty-minus" aria-label="Decrease quantity">−</button>
+          <input type="number" id="order-kg" class="form-input"
+                 value="1" min="0.25" step="0.5" placeholder="1">
+          <button type="button" class="qty-btn" id="qty-plus" aria-label="Increase quantity">+</button>
+        </div>
+
+        <label class="form-label">Delivery location</label>
+        <button type="button" id="order-location-btn" class="form-input form-btn">
+          📍 Share my location
+        </button>
+        <p id="order-location-status" class="form-hint">Location not shared</p>
+
+        <p id="order-total" class="form-total">Total: ₹${product.price}</p>
+
+        <button type="button" id="order-submit" class="form-submit">Confirm Order</button>
+        <p id="order-error" class="form-error hidden"></p>
+      `;
+
+      const nameInput = document.getElementById("order-name");
+      const phoneInput = document.getElementById("order-phone");
+      const kgInput = document.getElementById("order-kg");
+      const minusBtn = document.getElementById("qty-minus");
+      const plusBtn = document.getElementById("qty-plus");
+      const locationBtn = document.getElementById("order-location-btn");
+      const locationStatus = document.getElementById("order-location-status");
+      const totalEl = document.getElementById("order-total");
+      const submitBtn = document.getElementById("order-submit");
+      const errorEl = document.getElementById("order-error");
+
+      // Calculate total helper
+      function updateTotal() {
+        const val = parseFloat(kgInput.value);
+        const kg = isNaN(val) ? 0 : val;
+        const total = Math.round(kg * product.price);
+        totalEl.textContent = `Total: ₹${total}`;
+      }
+
+      // Quantity buttons (- / + with 0.5 step, min 0.5)
+      minusBtn.addEventListener("click", () => {
+        let current = parseFloat(kgInput.value) || 1;
+        let next = Math.max(0.5, Math.round((current - 0.5) * 10) / 10);
+        kgInput.value = next;
+        updateTotal();
+      });
+
+      plusBtn.addEventListener("click", () => {
+        let current = parseFloat(kgInput.value) || 0;
+        let next = Math.round((current + 0.5) * 10) / 10;
+        kgInput.value = next;
+        updateTotal();
+      });
+
+      // Custom typed quantity input
+      kgInput.addEventListener("input", updateTotal);
+
+      // High accuracy GPS location capture
+      locationBtn.addEventListener("click", () => {
+        if (!navigator.geolocation) {
+          locationStatus.textContent = "⚠️ Geolocation not supported by browser. You can still order.";
+          return;
+        }
+
+        locationStatus.textContent = "Acquiring precise location...";
+        locationBtn.disabled = true;
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            const lat = pos.coords.latitude.toFixed(6);
+            const lng = pos.coords.longitude.toFixed(6);
+            currentMapLink = `https://www.google.com/maps?q=${lat},${lng}`;
+            locationStatus.textContent = "✓ Location captured accurately";
+            locationBtn.textContent = "📍 Location shared ✓";
+            locationBtn.disabled = false;
+          },
+          (err) => {
+            console.warn("Location error:", err);
+            locationStatus.textContent = "⚠️ Location denied/unavailable. You can still order.";
+            locationBtn.disabled = false;
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+          }
+        );
+      });
+
+      // Confirm order submit handler
+      submitBtn.addEventListener("click", async () => {
+        errorEl.classList.add("hidden");
+        errorEl.textContent = "";
+
+        const customerName = nameInput.value.trim();
+        const phone = phoneInput.value.trim();
+        const kg = parseFloat(kgInput.value);
+
+        // Validations
+        if (!customerName) {
+          errorEl.textContent = "Please enter your name.";
+          errorEl.classList.remove("hidden");
+          nameInput.focus();
+          return;
+        }
+
+        const phoneDigits = phone.replace(/\D/g, "");
+        if (phoneDigits.length !== 10) {
+          errorEl.textContent = "Please enter a valid 10-digit mobile number.";
+          errorEl.classList.remove("hidden");
+          phoneInput.focus();
+          return;
+        }
+
+        if (isNaN(kg) || kg <= 0) {
+          errorEl.textContent = "Please enter a valid quantity greater than 0 kg.";
+          errorEl.classList.remove("hidden");
+          kgInput.focus();
+          return;
+        }
+
+        submitBtn.disabled = true;
+        submitBtn.textContent = "Submitting...";
+
+        try {
+          const res = await fetch(ORDER_API_URL, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              customer_name: customerName,
+              phone: phoneDigits,
+              fish_name: product.nameEn,
+              kg: kg,
+              unit_price: product.price,
+              map_link: currentMapLink || ""
+            })
+          });
+
+          if (!res.ok) {
+            throw new Error(`Server returned HTTP ${res.status}`);
+          }
+
+          const result = await res.json();
+          if (!result.ok && !result.order_id) {
+            throw new Error(result.error || "Order submission failed");
+          }
+
+          renderSuccessView({
+            order_id: result.order_id,
+            fish_name: result.fish_name || product.nameEn,
+            kg: result.kg || kg,
+            unit_price: result.unit_price || product.price,
+            total: result.total || Math.round(kg * product.price),
+            customer_name: customerName,
+            phone: phoneDigits,
+            map_link: currentMapLink
+          });
+
+        } catch (err) {
+          console.error("Order submission error:", err);
+          errorEl.textContent = "Could not place order. Please check connection and try again.";
+          errorEl.classList.remove("hidden");
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Confirm Order";
+        }
+      });
+
+      orderOverlay.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeOrderForm() {
+      const orderOverlay = document.getElementById("order-overlay");
+      if (orderOverlay) orderOverlay.classList.add("hidden");
+
+      // Check if product detail overlay is still open; if so keep overflow hidden, else restore
+      const productOverlay = document.getElementById("product-overlay");
+      if (!productOverlay || productOverlay.classList.contains("hidden")) {
+        document.body.style.overflow = "";
+      }
+    }
+
+    function closeAllOverlaysAndReload() {
+      closeOrderForm();
+      closeProductDetail();
+      loadFish();
+    }
+
+    function renderSuccessView(order) {
+      const orderBody = document.getElementById("order-body");
+      if (!orderBody) return;
+
+      const message = 
+`🐟 New Order — Meen Kada
+
+Order ID: ${order.order_id}
+Fish: ${order.fish_name}
+Quantity: ${order.kg} kg
+Price: ₹${order.unit_price}/kg
+Total: ₹${order.total}
+
+Customer: ${order.customer_name}
+Phone: ${order.phone}
+Location: ${order.map_link || "Not shared"}
+
+I will pay on delivery. Please confirm.`;
+
+      const waLink = `https://wa.me/${SHOP_WHATSAPP}?text=${encodeURIComponent(message)}`;
+
+      // Immediate redirect to WhatsApp
+      window.open(waLink, "_blank");
+
+      // Render confirmation with "Buy More" button (no raw link input or copy button)
+      orderBody.innerHTML = `
+        <div class="success-icon">✅</div>
+        <h2 class="form-title" style="text-align: center;">Order placed!</h2>
+        <p class="form-subtitle" style="text-align: center;">Your order ID is</p>
+        <p class="success-order-id">${order.order_id}</p>
+
+        <div class="success-summary">
+          <div><span>${order.fish_name}</span><span>${order.kg} kg</span></div>
+          <div><span>₹${order.unit_price}/kg</span><span>₹${order.total}</span></div>
+        </div>
+
+        <a id="wa-open-btn" class="wa-open-btn" href="${waLink}" target="_blank" rel="noopener">Open WhatsApp</a>
+        <button type="button" id="buy-more-btn" class="form-submit">Buy More</button>
+      `;
+
+      // "Buy More" button closes overlays and refreshes fish list
+      document.getElementById("buy-more-btn").addEventListener("click", () => {
+        closeAllOverlaysAndReload();
+      });
+    }
+
+    // ============ DETAIL POPUP HANDLERS ============
+    function openProductDetail(product) {
+      const overlay = document.getElementById("product-overlay");
+      const body = document.getElementById("overlay-body");
+
+      const discount = product.originalPrice > product.price
+        ? Math.round((1 - product.price / product.originalPrice) * 100)
+        : 0;
+
+      body.innerHTML = `
+        <div class="detail-image">
+          ${product.imageUrl
+            ? `<img src="${product.imageUrl}" alt="${product.nameEn}"
+                    onerror="this.parentElement.innerHTML='<span class=\\'placeholder-icon\\'>🐟</span>'">`
+            : `<span class="placeholder-icon">🐟</span>`}
+        </div>
+
+        <h2 class="detail-name-ml">${product.nameMl}</h2>
+        <p class="detail-name-en">${product.nameEn}</p>
+
+        <div class="detail-price-row">
+          <span class="detail-price">₹${product.price}</span>
+          ${discount > 0
+            ? `<span class="detail-original-price">₹${product.originalPrice}</span>
+               <span class="detail-discount-badge">${discount}% OFF</span>`
+            : ``}
+        </div>
+
+        ${product.note
+          ? `<p class="detail-section-title">Note</p>
+             <p class="detail-note">${product.note}</p>`
+          : ``}
+
+        <p class="detail-section-title">Why order from us</p>
+        <ul class="detail-features">
+          <li>✅ Free home delivery </li>
+          <li>🐟 Fresh fish</li>
+          <li>🔪 Free cleaning on request</li>
+          <li>💵 Pay after delivery (COD available)</li>
+        </ul>
+
+        <button class="detail-buy-btn" id="detail-buy-btn">Buy Now</button>
+      `;
+
+      document.getElementById("detail-buy-btn").addEventListener("click", () => {
+        handleBuyClick(product);
+      });
+
+      overlay.classList.remove("hidden");
+      document.body.style.overflow = "hidden";
+    }
+
+    function closeProductDetail() {
+      const overlay = document.getElementById("product-overlay");
+      if (overlay) overlay.classList.add("hidden");
+      
+      const orderOverlay = document.getElementById("order-overlay");
+      if (!orderOverlay || orderOverlay.classList.contains("hidden")) {
+        document.body.style.overflow = "";
+      }
+    }
+
+    // ============ RENDER PRODUCTS ============
+    function renderProducts(products) {
+      const grid = document.getElementById("productGrid") || document.getElementById("product-grid");
+      if (!grid) return;
+
+      grid.innerHTML = "";
+
+      products.forEach((p) => {
+        // Calculate discount %: Math.round((1 - price/originalPrice) * 100)
+        // Hide badge entirely if originalPrice is missing/zero or discount <= 0
+        const hasOriginalPrice = p.originalPrice && p.originalPrice > p.price;
+        const discountPercent = hasOriginalPrice
+          ? Math.round((1 - p.price / p.originalPrice) * 100)
+          : 0;
+        const showBadge = discountPercent > 0;
+
+        // Create card element
+        const card = document.createElement("article");
+        card.className = "product-card";
+
+        card.innerHTML = `
+          <div class="product-image">
+            ${showBadge ? `<span class="discount-badge">${discountPercent}% OFF</span>` : ""}
+            ${p.imageUrl
+              ? `<img src="${p.imageUrl}" alt="${p.nameEn}" 
+                      loading="lazy"
+                      onerror="this.parentElement.innerHTML='<span class=\\'placeholder-icon\\'>🐟</span>'">`
+              : `<span class="placeholder-icon">🐟</span>`}
+          </div>
+          <div class="product-info">
+            <div class="name-block">
+              <span class="name-ml">${p.nameMl}</span>
+              <span class="name-en">${p.nameEn}</span>
+            </div>
+            <div class="price-block">
+              <span class="selling-price">₹${p.price}</span>
+              ${hasOriginalPrice ? `<span class="original-price">₹${p.originalPrice}</span>` : ""}
+            </div>
+            <button type="button" class="btn-buy buy-btn" aria-label="Buy ${p.nameEn}">Buy Now</button>
+          </div>
+        `;
+
+        // Buy button click listener
+        const buyBtn = card.querySelector(".buy-btn");
+        buyBtn.addEventListener("click", (e) => {
+          e.stopPropagation();
+          handleBuyClick(p);
+        });
+
+        // Card click listener (opens product detail popup)
+        card.addEventListener("click", (e) => {
+          if (e.target.closest(".buy-btn")) return;
+          openProductDetail(p);
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    // ============ ASYNC LOADER ============
+    async function loadFish() {
+      const grid = document.getElementById("productGrid") || document.getElementById("product-grid");
+      if (!grid) return;
+
+      grid.innerHTML = `<div class="loading">Loading fish...</div>`;
+      try {
+        const res = await fetch(API_URL);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = await res.json();
+        if (!data.length) {
+          grid.innerHTML = `<div class="empty">No fish available today</div>`;
+          return;
+        }
+        renderProducts(data);
+      } catch (err) {
+        console.error("Failed to load fish:", err);
+        grid.innerHTML = `<div class="error">Could not load fish. Please try again later.</div>`;
+      }
+    }
+
+    // ============ EVENT LISTENERS ============
+    document.addEventListener("DOMContentLoaded", () => {
+      // Product detail overlay events
+      const productOverlay = document.getElementById("product-overlay");
+      if (productOverlay) {
+        productOverlay.querySelector(".overlay-close").addEventListener("click", closeProductDetail);
+        productOverlay.querySelector(".overlay-backdrop").addEventListener("click", closeProductDetail);
+      }
+
+      // Order overlay events
+      const orderOverlay = document.getElementById("order-overlay");
+      if (orderOverlay) {
+        orderOverlay.querySelector(".overlay-close").addEventListener("click", closeOrderForm);
+        orderOverlay.querySelector(".overlay-backdrop").addEventListener("click", closeOrderForm);
+      }
+
+      // Escape key handles top-most open overlay
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          if (orderOverlay && !orderOverlay.classList.contains("hidden")) {
+            closeOrderForm();
+          } else if (productOverlay && !productOverlay.classList.contains("hidden")) {
+            closeProductDetail();
+          }
+        }
+      });
+    });
+
+    // Load fish on startup
+    loadFish();
+  </script>
+</body>
+</html>
