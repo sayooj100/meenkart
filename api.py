@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 import gspread
 from google.oauth2.service_account import Credentials
@@ -12,8 +12,11 @@ from dotenv import load_dotenv
 from PIL import Image
 from werkzeug.utils import secure_filename
 
+# ============ BASE DIR ============
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
 # ============ CONFIG ============
-load_dotenv(dotenv_path=".env.local")
+load_dotenv(dotenv_path=os.path.join(BASE_DIR, ".env.local"))
 load_dotenv()
 
 SPREADSHEET_ID = os.getenv("SPREADSHEET_ID", "1wjtZBYMI9Czg7x1j4kpG-QieOVoP3V3tUEzHl6O52fI")
@@ -28,43 +31,66 @@ R2_SECRET_KEY = os.getenv("R2_SECRET_ACCESS_KEY")
 R2_BUCKET = os.getenv("R2_BUCKET_NAME", "meen-kada-images")
 R2_PUBLIC_URL = os.getenv("R2_PUBLIC_URL")
 
-# Google Sheets Setup (Supports both GOOGLE_CREDENTIALS_JSON env var or credentials.json file)
+# Google Sheets Setup
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 
 google_creds_raw = os.getenv("GOOGLE_CREDENTIALS_JSON")
+creds = None
 if google_creds_raw:
     try:
         creds_dict = json.loads(google_creds_raw)
         creds = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
     except Exception as e:
         print(f"Error parsing GOOGLE_CREDENTIALS_JSON: {e}")
-        creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
-elif os.path.exists(CREDENTIALS_FILE):
-    creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
-else:
-    # Look one level up in case of subfolder execution
-    parent_creds = os.path.join(os.path.dirname(__file__), "..", CREDENTIALS_FILE)
-    if os.path.exists(parent_creds):
-        creds = Credentials.from_service_account_file(parent_creds, scopes=SCOPES)
-    else:
-        raise FileNotFoundError(f"Could not locate {CREDENTIALS_FILE} or GOOGLE_CREDENTIALS_JSON")
 
-gs_client = gspread.authorize(creds)
+if not creds:
+    local_path = os.path.join(BASE_DIR, CREDENTIALS_FILE)
+    if os.path.exists(local_path):
+        creds = Credentials.from_service_account_file(local_path, scopes=SCOPES)
+    elif os.path.exists(CREDENTIALS_FILE):
+        creds = Credentials.from_service_account_file(CREDENTIALS_FILE, scopes=SCOPES)
+
+gs_client = gspread.authorize(creds) if creds else None
 
 # Cloudflare R2 Setup
-s3 = boto3.client(
-    service_name="s3",
-    endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
-    aws_access_key_id=R2_ACCESS_KEY,
-    aws_secret_access_key=R2_SECRET_KEY,
-    region_name="auto",
-)
+s3 = None
+if R2_ACCOUNT_ID and R2_ACCESS_KEY and R2_SECRET_KEY:
+    s3 = boto3.client(
+        service_name="s3",
+        endpoint_url=f"https://{R2_ACCOUNT_ID}.r2.cloudflarestorage.com",
+        aws_access_key_id=R2_ACCESS_KEY,
+        aws_secret_access_key=R2_SECRET_KEY,
+        region_name="auto",
+    )
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder=BASE_DIR)
 CORS(app)
+
+# ---------- STATIC FILE SERVING FOR VERCEL ----------
+@app.route("/", methods=["GET"])
+def serve_index():
+    return send_from_directory(BASE_DIR, "index.html")
+
+@app.route("/index.html", methods=["GET"])
+def serve_index_html():
+    return send_from_directory(BASE_DIR, "index.html")
+
+@app.route("/admin.html", methods=["GET"])
+def serve_admin():
+    return send_from_directory(BASE_DIR, "admin.html")
+
+@app.route("/assets/<path:path>", methods=["GET"])
+def serve_assets(path):
+    return send_from_directory(os.path.join(BASE_DIR, "assets"), path)
+
+@app.route("/favicon.ico", methods=["GET"])
+def serve_favicon():
+    return send_from_directory(BASE_DIR, "favicon.ico")
 
 # ---------- HELPERS ----------
 def get_sheet(tab_name):
+    if not gs_client:
+        raise ValueError("Google Sheets client is not configured. Check GOOGLE_CREDENTIALS_JSON.")
     return gs_client.open_by_key(SPREADSHEET_ID).worksheet(tab_name)
 
 def next_order_id(sheet):
@@ -85,6 +111,8 @@ def convert_to_webp(image_file, max_size=1000, quality=85):
     return out.read()
 
 def upload_to_r2(webp_bytes, filename):
+    if not s3:
+        raise ValueError("Cloudflare R2 is not configured. Check R2 credentials.")
     key = f"fish/{filename}"
     s3.put_object(
         Bucket=R2_BUCKET,
@@ -202,7 +230,6 @@ def admin_get_fish():
         all_values = sheet.get_all_values()
         active_fish = []
         
-        # Loop from row 1 (sheet row 2) ignoring headers
         for i, row in enumerate(all_values[1:], start=2):
             if not row or len(row) < 7: continue
             if str(row[6]).strip().lower() == "yes":
