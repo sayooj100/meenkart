@@ -614,9 +614,10 @@
     const API_BASE = "http://localhost:5000";
 
     function getEndpoint(path) {
-      return (window.location.protocol === "file:" || !window.location.port)
-        ? `${API_BASE}${path}`
-        : path;
+      // Use relative path on production (Vercel), absolute localhost only when running locally via file:// or port 5000
+      if (window.location.protocol === "file:") return `${API_BASE}${path}`;
+      if (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") return `${API_BASE}${path}`;
+      return path; // production: relative path, same origin
     }
 
     // ============ ELEMENTS ============
