@@ -1,6 +1,10 @@
 {
   "version": 2,
   "builds": [
+    { "src": "index.html", "use": "@vercel/static" },
+    { "src": "admin.html", "use": "@vercel/static" },
+    { "src": "favicon.ico", "use": "@vercel/static" },
+    { "src": "assets/**", "use": "@vercel/static" },
     { "src": "api/index.py", "use": "@vercel/python" }
   ],
   "routes": [
