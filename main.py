@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 import gspread
 from google.oauth2.service_account import Credentials
@@ -63,7 +63,7 @@ if R2_ACCOUNT_ID and R2_ACCESS_KEY and R2_SECRET_KEY:
         region_name="auto",
     )
 
-app = Flask(__name__, static_folder=BASE_DIR)
+app = Flask(__name__)
 CORS(app)
 
 # ---------- HEALTH CHECK ----------
@@ -77,27 +77,6 @@ def health():
         "gs_client": gs_client is not None,
         "s3": s3 is not None,
     })
-
-# ---------- STATIC FILE SERVING FOR VERCEL ----------
-@app.route("/", methods=["GET"])
-def serve_index():
-    return send_from_directory(BASE_DIR, "index.html")
-
-@app.route("/index.html", methods=["GET"])
-def serve_index_html():
-    return send_from_directory(BASE_DIR, "index.html")
-
-@app.route("/admin.html", methods=["GET"])
-def serve_admin():
-    return send_from_directory(BASE_DIR, "admin.html")
-
-@app.route("/assets/<path:path>", methods=["GET"])
-def serve_assets(path):
-    return send_from_directory(os.path.join(BASE_DIR, "assets"), path)
-
-@app.route("/favicon.ico", methods=["GET"])
-def serve_favicon():
-    return send_from_directory(BASE_DIR, "favicon.ico")
 
 # ---------- HELPERS ----------
 def get_sheet(tab_name):
