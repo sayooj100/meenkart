@@ -1,4 +1,4 @@
-from api import app
+from main import app
 
 # Vercel WSGI entry point
 # Exports the Flask 'app' as the WSGI callable
