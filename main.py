@@ -66,6 +66,18 @@ if R2_ACCOUNT_ID and R2_ACCESS_KEY and R2_SECRET_KEY:
 app = Flask(__name__, static_folder=BASE_DIR)
 CORS(app)
 
+# ---------- HEALTH CHECK ----------
+@app.route("/health", methods=["GET"])
+def health():
+    import sys
+    return jsonify({
+        "ok": True,
+        "python": sys.version,
+        "base_dir": BASE_DIR,
+        "gs_client": gs_client is not None,
+        "s3": s3 is not None,
+    })
+
 # ---------- STATIC FILE SERVING FOR VERCEL ----------
 @app.route("/", methods=["GET"])
 def serve_index():
