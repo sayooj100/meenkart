@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>മീൻ കട — Meen Kada | Village Fresh Fish</title>
+  <title>വീട്ടിലോട്ട് | Fresh Fish & Meat</title>
   
   <!-- Favicon -->
   <link rel="icon" type="image/x-icon" href="./favicon.ico">
@@ -90,13 +90,14 @@
     }
 
     .brand-logo {
-      height: 56px;
-      width: auto;
-      max-width: 180px;
-      object-fit: contain;
-      border-radius: 8px;
+      height: 64px;
+      width: 64px;
+      object-fit: cover;
+      object-position: center center;
+      border-radius: 12px;
       display: block;
-      margin: 0 auto 4px;
+      margin: 0 auto 6px;
+      overflow: hidden;
     }
 
     .brand-title {
@@ -115,6 +116,73 @@
       margin-top: 2px;
       letter-spacing: 0.3px;
     }
+
+    /* ================= CATEGORY TABS ================= */
+    .category-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 2px solid var(--color-border);
+      background: #fff;
+      position: sticky;
+      top: 90px; /* sits just below the sticky header */
+      z-index: 90;
+      padding: 0 12px;
+      box-shadow: 0 2px 6px rgba(5,90,51,0.05);
+    }
+
+    .tab-btn {
+      flex: 1;
+      max-width: 160px;
+      padding: 11px 8px 10px;
+      background: none;
+      border: none;
+      border-bottom: 3px solid transparent;
+      margin-bottom: -2px;
+      font-family: var(--font-en);
+      font-size: 0.9rem;
+      font-weight: 600;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      transition: color 0.15s, border-color 0.15s;
+      letter-spacing: 0.2px;
+    }
+
+    .tab-btn:hover {
+      color: var(--color-primary);
+    }
+
+    .tab-btn.active {
+      color: var(--color-primary);
+      border-bottom-color: var(--color-primary);
+    }
+
+    .tab-btn .tab-emoji {
+      font-size: 1.1rem;
+    }
+
+    /* Tab panel visibility */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Meat coming soon placeholder */
+    .coming-soon-wrap {
+      text-align: center;
+      padding: 60px 24px 40px;
+      color: var(--color-text-muted);
+    }
+    .coming-soon-wrap .coming-emoji { font-size: 3rem; margin-bottom: 12px; }
+    .coming-soon-wrap h2 {
+      font-family: var(--font-ml);
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--color-text-main);
+      margin-bottom: 6px;
+    }
+    .coming-soon-wrap p { font-size: 0.88rem; }
 
     /* ================= MAIN CONTAINER ================= */
     main {
@@ -712,16 +780,38 @@
   <!-- Sticky Header -->
   <header>
     <div class="brand-container">
-      <img src="./assets/logo.png" alt="മീൻ കട Logo" class="brand-logo" onerror="this.style.display='none'">
-      <h1 class="brand-title">മീൻ കട</h1>
-      <p class="brand-tagline">Fresh fish, delivered to your home</p>
+      <img src="./logonew.png" alt="വീട്ടിലോട്ട് Logo" class="brand-logo" onerror="this.style.display='none'">
+      <h1 class="brand-title">വീട്ടിലോട്ട്</h1>
+      <p class="brand-tagline">Fresh fish & meat, delivered to your home</p>
     </div>
   </header>
 
+  <!-- Category Tabs -->
+  <nav class="category-tabs" role="tablist" aria-label="Category">
+    <button class="tab-btn active" id="tab-fish" role="tab" aria-selected="true" aria-controls="panel-fish">
+      <span class="tab-emoji">🐟</span> Fish
+    </button>
+    <button class="tab-btn" id="tab-meat" role="tab" aria-selected="false" aria-controls="panel-meat">
+      <span class="tab-emoji">🥩</span> Meat
+    </button>
+  </nav>
+
   <!-- Product Listing Main Section -->
   <main>
-    <div class="product-grid" id="productGrid">
-      <!-- Dynamically populated via renderProducts(data) or load states -->
+    <!-- Fish Tab Panel -->
+    <div class="tab-panel active" id="panel-fish" role="tabpanel" aria-labelledby="tab-fish">
+      <div class="product-grid" id="productGrid">
+        <!-- Dynamically populated via renderProducts(data) or load states -->
+      </div>
+    </div>
+
+    <!-- Meat Tab Panel (empty for now) -->
+    <div class="tab-panel" id="panel-meat" role="tabpanel" aria-labelledby="tab-meat">
+      <div class="coming-soon-wrap">
+        <div class="coming-emoji">🥩</div>
+        <h2>മാംസം</h2>
+        <p>Coming soon — stay tuned!</p>
+      </div>
     </div>
   </main>
 
@@ -745,7 +835,7 @@
 
   <!-- Footer -->
   <footer>
-    <p class="footer-text">© 2026 Meen Kada · Village fresh fish</p>
+    <p class="footer-text">© 2026 വീട്ടിലോട്ട് · Fresh fish & meat</p>
   </footer>
 
   <!-- Always-Active Bottom Bar: Join WhatsApp for Exciting Offers -->
@@ -764,6 +854,27 @@
   </div>
 
   <script>
+    // ============ CATEGORY TABS ============
+    function initTabs() {
+      const tabBtns = document.querySelectorAll(".tab-btn");
+      tabBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+          // Deactivate all tabs & panels
+          tabBtns.forEach(b => {
+            b.classList.remove("active");
+            b.setAttribute("aria-selected", "false");
+          });
+          document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
+
+          // Activate clicked tab & its panel
+          btn.classList.add("active");
+          btn.setAttribute("aria-selected", "true");
+          const panelId = btn.getAttribute("aria-controls");
+          document.getElementById(panelId).classList.add("active");
+        });
+      });
+    }
+
     // ============ CONFIG ============
     const API_BASE = (window.location.protocol === "file:" || (!window.location.port && window.location.hostname === ""))
       ? "http://localhost:5000"
@@ -1198,6 +1309,8 @@ I will pay on delivery. Please confirm.`;
 
     // ============ EVENT LISTENERS ============
     document.addEventListener("DOMContentLoaded", () => {
+      // Init category tabs
+      initTabs();
       // Product detail overlay events
       const productOverlay = document.getElementById("product-overlay");
       if (productOverlay) {
