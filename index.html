@@ -788,30 +788,32 @@
 
   <!-- Category Tabs -->
   <nav class="category-tabs" role="tablist" aria-label="Category">
-    <button class="tab-btn active" id="tab-fish" role="tab" aria-selected="true" aria-controls="panel-fish">
-      <span class="tab-emoji">🐟</span> Fish
+    <button class="tab-btn active" id="tab-chicken" role="tab" aria-selected="true" aria-controls="panel-chicken">
+      <span class="tab-emoji">🐔</span> Chicken
     </button>
-    <button class="tab-btn" id="tab-meat" role="tab" aria-selected="false" aria-controls="panel-meat">
-      <span class="tab-emoji">🥩</span> Meat
+    <button class="tab-btn" id="tab-beef" role="tab" aria-selected="false" aria-controls="panel-beef">
+      <span class="tab-emoji">🥩</span> Beef
+    </button>
+    <button class="tab-btn" id="tab-fish" role="tab" aria-selected="false" aria-controls="panel-fish">
+      <span class="tab-emoji">🐟</span> Fish
     </button>
   </nav>
 
   <!-- Product Listing Main Section -->
   <main>
-    <!-- Fish Tab Panel -->
-    <div class="tab-panel active" id="panel-fish" role="tabpanel" aria-labelledby="tab-fish">
-      <div class="product-grid" id="productGrid">
-        <!-- Dynamically populated via renderProducts(data) or load states -->
-      </div>
+    <!-- Chicken Tab Panel -->
+    <div class="tab-panel active" id="panel-chicken" role="tabpanel" aria-labelledby="tab-chicken">
+      <div class="product-grid" id="chickenGrid"></div>
     </div>
 
-    <!-- Meat Tab Panel (empty for now) -->
-    <div class="tab-panel" id="panel-meat" role="tabpanel" aria-labelledby="tab-meat">
-      <div class="coming-soon-wrap">
-        <div class="coming-emoji">🥩</div>
-        <h2>മാംസം</h2>
-        <p>Coming soon — stay tuned!</p>
-      </div>
+    <!-- Beef Tab Panel -->
+    <div class="tab-panel" id="panel-beef" role="tabpanel" aria-labelledby="tab-beef">
+      <div class="product-grid" id="beefGrid"></div>
+    </div>
+
+    <!-- Fish Tab Panel -->
+    <div class="tab-panel" id="panel-fish" role="tabpanel" aria-labelledby="tab-fish">
+      <div class="product-grid" id="fishGrid"></div>
     </div>
   </main>
 
@@ -859,14 +861,11 @@
       const tabBtns = document.querySelectorAll(".tab-btn");
       tabBtns.forEach(btn => {
         btn.addEventListener("click", () => {
-          // Deactivate all tabs & panels
           tabBtns.forEach(b => {
             b.classList.remove("active");
             b.setAttribute("aria-selected", "false");
           });
           document.querySelectorAll(".tab-panel").forEach(p => p.classList.remove("active"));
-
-          // Activate clicked tab & its panel
           btn.classList.add("active");
           btn.setAttribute("aria-selected", "true");
           const panelId = btn.getAttribute("aria-controls");
@@ -879,9 +878,11 @@
     const API_BASE = (window.location.protocol === "file:" || (!window.location.port && window.location.hostname === ""))
       ? "http://localhost:5000"
       : "";
-    const API_URL = `${API_BASE}/api/fish`;
-    const ORDER_API_URL = `${API_BASE}/api/order`;
-    const SHOP_WHATSAPP = "919946549544"; // Updated WhatsApp redirect number
+    const CHICKEN_API_URL = `${API_BASE}/api/chicken`;
+    const BEEF_API_URL    = `${API_BASE}/api/beef`;
+    const FISH_API_URL    = `${API_BASE}/api/fish`;
+    const ORDER_API_URL   = `${API_BASE}/api/order`;
+    const SHOP_WHATSAPP   = "919946549544";
 
     // Variable to track location link scoped to current order
     let currentMapLink = "";
@@ -891,11 +892,9 @@
       const bottomBar = document.querySelector(".whatsapp-bottom-bar");
       if (!bottomBar) return;
       const productOverlay = document.getElementById("product-overlay");
-      const orderOverlay = document.getElementById("order-overlay");
-
+      const orderOverlay   = document.getElementById("order-overlay");
       const isAnyOverlayOpen = (productOverlay && !productOverlay.classList.contains("hidden")) ||
-                               (orderOverlay && !orderOverlay.classList.contains("hidden"));
-
+                               (orderOverlay   && !orderOverlay.classList.contains("hidden"));
       if (isAnyOverlayOpen) {
         bottomBar.style.display = "none";
         document.body.classList.add("modal-open");
@@ -904,8 +903,25 @@
         document.body.classList.remove("modal-open");
       }
     }
-    function handleBuyClick(product) {
-      openOrderForm(product);
+
+    function handleBuyClick(product) { openOrderForm(product); }
+
+    // ============ STORE CLOSED BANNER ============
+    function storeClosedHTML(emoji, label) {
+      return `
+        <div class="coming-soon-wrap" style="grid-column:1/-1;">
+          <div class="coming-emoji">${emoji}</div>
+          <h2>Store Closed</h2>
+          <p>No ${label} available today.<br>Come back tomorrow! 🙏</p>
+        </div>
+      `;
+    }
+
+    // ============ TYPE EMOJI HELPER ============
+    function typeEmoji(type) {
+      if (type === "chicken") return "🐔";
+      if (type === "beef")    return "🥩";
+      return "🐟";
     }
 
     // ============ ORDER FORM HANDLERS ============
@@ -1114,18 +1130,18 @@
     function closeAllOverlaysAndReload() {
       closeOrderForm();
       closeProductDetail();
-      loadFish();
+      loadAllCategories();
     }
 
     function renderSuccessView(order) {
       const orderBody = document.getElementById("order-body");
       if (!orderBody) return;
 
-      const message = 
-`🐟 New Order — Meen Kada
+      const message =
+`🛒 New Order — വീട്ടിലോട്ട്
 
 Order ID: ${order.order_id}
-Fish: ${order.fish_name}
+Item: ${order.fish_name}
 Quantity: ${order.kg} kg
 Price: ₹${order.unit_price}/kg
 Total: ₹${order.total}
@@ -1166,7 +1182,8 @@ I will pay on delivery. Please confirm.`;
     // ============ DETAIL POPUP HANDLERS ============
     function openProductDetail(product) {
       const overlay = document.getElementById("product-overlay");
-      const body = document.getElementById("overlay-body");
+      const body    = document.getElementById("overlay-body");
+      const emoji   = typeEmoji(product.type);
 
       const discount = product.originalPrice > product.price
         ? Math.round((1 - product.price / product.originalPrice) * 100)
@@ -1176,8 +1193,8 @@ I will pay on delivery. Please confirm.`;
         <div class="detail-image">
           ${product.imageUrl
             ? `<img src="${product.imageUrl}" alt="${product.nameEn}"
-                    onerror="this.parentElement.innerHTML='<span class=\\'placeholder-icon\\'>🐟</span>'">`
-            : `<span class="placeholder-icon">🐟</span>`}
+                    onerror="this.parentElement.innerHTML='<span class=\\'placeholder-icon\\'>${emoji}</span>'">`
+            : `<span class="placeholder-icon">${emoji}</span>`}
         </div>
 
         <h2 class="detail-name-ml">${product.nameMl}</h2>
@@ -1198,8 +1215,8 @@ I will pay on delivery. Please confirm.`;
 
         <p class="detail-section-title">Why order from us</p>
         <ul class="detail-features">
-          <li>✅ Free home delivery </li>
-          <li>🐟 Fresh fish</li>
+          <li>✅ Free home delivery</li>
+          <li>${emoji} Fresh ${product.type}</li>
           <li>🔪 Free cleaning on request</li>
           <li>💵 Pay after delivery (COD available)</li>
         </ul>
@@ -1219,7 +1236,7 @@ I will pay on delivery. Please confirm.`;
     function closeProductDetail() {
       const overlay = document.getElementById("product-overlay");
       if (overlay) overlay.classList.add("hidden");
-      
+
       const orderOverlay = document.getElementById("order-overlay");
       if (!orderOverlay || orderOverlay.classList.contains("hidden")) {
         document.body.style.overflow = "";
@@ -1228,22 +1245,32 @@ I will pay on delivery. Please confirm.`;
     }
 
     // ============ RENDER PRODUCTS ============
-    function renderProducts(products) {
-      const grid = document.getElementById("productGrid") || document.getElementById("product-grid");
+    function renderProducts(products, gridId) {
+      const grid = document.getElementById(gridId);
       if (!grid) return;
-
       grid.innerHTML = "";
 
-      products.forEach((p) => {
-        // Calculate discount %: Math.round((1 - price/originalPrice) * 100)
-        // Hide badge entirely if originalPrice is missing/zero or discount <= 0
-        const hasOriginalPrice = p.originalPrice && p.originalPrice > p.price;
-        const discountPercent = hasOriginalPrice
-          ? Math.round((1 - p.price / p.originalPrice) * 100)
-          : 0;
-        const showBadge = discountPercent > 0;
+      // Determine the category label & emoji from gridId
+      const catMap = {
+        chickenGrid: { emoji: "🐔", label: "chicken" },
+        beefGrid:    { emoji: "🥩", label: "beef" },
+        fishGrid:    { emoji: "🐟", label: "fish" },
+      };
+      const cat = catMap[gridId] || { emoji: "🐟", label: "items" };
 
-        // Create card element
+      // If empty, show "store closed" banner
+      if (!products || products.length === 0) {
+        grid.innerHTML = storeClosedHTML(cat.emoji, cat.label);
+        return;
+      }
+
+      products.forEach((p) => {
+        const hasOriginalPrice = p.originalPrice && p.originalPrice > p.price;
+        const discountPercent  = hasOriginalPrice
+          ? Math.round((1 - p.price / p.originalPrice) * 100) : 0;
+        const showBadge = discountPercent > 0;
+        const emoji = typeEmoji(p.type);
+
         const card = document.createElement("article");
         card.className = "product-card";
 
@@ -1251,10 +1278,10 @@ I will pay on delivery. Please confirm.`;
           <div class="product-image">
             ${showBadge ? `<span class="discount-badge">${discountPercent}% OFF</span>` : ""}
             ${p.imageUrl
-              ? `<img src="${p.imageUrl}" alt="${p.nameEn}" 
+              ? `<img src="${p.imageUrl}" alt="${p.nameEn}"
                       loading="lazy"
-                      onerror="this.parentElement.innerHTML='<span class=\\'placeholder-icon\\'>🐟</span>'">`
-              : `<span class="placeholder-icon">🐟</span>`}
+                      onerror="this.parentElement.innerHTML='<span class=\\'placeholder-icon\\'>${emoji}</span>'">`
+              : `<span class="placeholder-icon">${emoji}</span>`}
           </div>
           <div class="product-info">
             <div class="name-block">
@@ -1269,14 +1296,11 @@ I will pay on delivery. Please confirm.`;
           </div>
         `;
 
-        // Buy button click listener
-        const buyBtn = card.querySelector(".buy-btn");
-        buyBtn.addEventListener("click", (e) => {
+        card.querySelector(".buy-btn").addEventListener("click", (e) => {
           e.stopPropagation();
           handleBuyClick(p);
         });
 
-        // Card click listener (opens product detail popup)
         card.addEventListener("click", (e) => {
           if (e.target.closest(".buy-btn")) return;
           openProductDetail(p);
@@ -1286,31 +1310,33 @@ I will pay on delivery. Please confirm.`;
       });
     }
 
-    // ============ ASYNC LOADER ============
-    async function loadFish() {
-      const grid = document.getElementById("productGrid") || document.getElementById("product-grid");
+    // ============ ASYNC LOADERS ============
+    async function loadCategory(apiUrl, gridId, loadingLabel) {
+      const grid = document.getElementById(gridId);
       if (!grid) return;
-
-      grid.innerHTML = `<div class="loading">Loading fish...</div>`;
+      grid.innerHTML = `<div class="loading">Loading ${loadingLabel}...</div>`;
       try {
-        const res = await fetch(API_URL);
+        const res  = await fetch(apiUrl);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
-        if (!data.length) {
-          grid.innerHTML = `<div class="empty">No fish available today</div>`;
-          return;
-        }
-        renderProducts(data);
+        renderProducts(data, gridId);
       } catch (err) {
-        console.error("Failed to load fish:", err);
-        grid.innerHTML = `<div class="error">Could not load fish. Please try again later.</div>`;
+        console.error(`Failed to load ${loadingLabel}:`, err);
+        grid.innerHTML = `<div class="error">Could not load ${loadingLabel}. Please try again.</div>`;
       }
+    }
+
+    function loadAllCategories() {
+      loadCategory(CHICKEN_API_URL, "chickenGrid", "chicken");
+      loadCategory(BEEF_API_URL,    "beefGrid",    "beef");
+      loadCategory(FISH_API_URL,    "fishGrid",    "fish");
     }
 
     // ============ EVENT LISTENERS ============
     document.addEventListener("DOMContentLoaded", () => {
       // Init category tabs
       initTabs();
+
       // Product detail overlay events
       const productOverlay = document.getElementById("product-overlay");
       if (productOverlay) {
@@ -1337,8 +1363,8 @@ I will pay on delivery. Please confirm.`;
       });
     });
 
-    // Load fish on startup
-    loadFish();
+    // Load all categories on startup
+    loadAllCategories();
   </script>
 </body>
 </html>

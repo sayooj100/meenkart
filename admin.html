@@ -521,8 +521,8 @@
   <main class="dashboard-container">
     <!-- Header -->
     <header class="admin-header">
-      <h1 class="admin-title">🐟 മീൻ കട — Admin Dashboard</h1>
-      <p class="admin-subtitle">Manage today's fish catalog & inventory</p>
+      <h1 class="admin-title">🛒 വീട്ടിലോട്ട് — Admin Dashboard</h1>
+      <p class="admin-subtitle">Manage today's menu — Fish 🐟 · Chicken 🐔 · Beef 🥩</p>
     </header>
 
     <!-- Today's Menu Section -->
@@ -539,14 +539,14 @@
 
       <!-- Fish List Container -->
       <div id="fishList" class="fish-list">
-        <div class="list-state">Loading active fish menu...</div>
+        <div class="list-state">Loading active items menu...</div>
       </div>
     </section>
   </main>
 
   <!-- Floating Action Button (FAB) -->
-  <button id="fab-add-fish" class="fab-btn" onclick="openAddFish()" aria-label="Add Fish">
-    + Add Fish
+  <button id="fab-add-fish" class="fab-btn" onclick="openAddFish()" aria-label="Add Item">
+    + Add Item
   </button>
 
   <!-- Add Fish Popup Overlay -->
@@ -554,7 +554,7 @@
     <div class="overlay-backdrop"></div>
     <div class="overlay-content">
       <button class="overlay-close" onclick="closeAddFish()" aria-label="Close">✕</button>
-      <h2 class="form-title">Add New Fish</h2>
+      <h2 class="form-title">Add New Item</h2>
 
       <form id="add-fish-form" novalidate>
         <!-- Fish Image Picker -->
@@ -600,8 +600,18 @@
           <input type="text" id="note" class="form-input" placeholder="e.g. Best for curry, freshly caught">
         </div>
 
+        <!-- Type -->
+        <div class="form-group">
+          <label class="form-label" for="itemType">Type <span style="color:#c0392b;">*</span></label>
+          <select id="itemType" class="form-input" required>
+            <option value="chicken">🐔 Chicken</option>
+            <option value="beef">🥩 Beef</option>
+            <option value="fish" selected>🐟 Fish</option>
+          </select>
+        </div>
+
         <!-- Submit Button -->
-        <button type="submit" id="submitBtn" class="btn-submit">Add Fish</button>
+        <button type="submit" id="submitBtn" class="btn-submit">Add Item</button>
 
         <!-- Error Box -->
         <div id="errorBox" class="error-box hidden" role="alert"></div>
@@ -725,7 +735,7 @@
     // ============ LOAD ACTIVE FISH MENU ============
     async function loadActiveFish() {
       try {
-        fishListEl.innerHTML = `<div class="list-state">Loading active fish menu...</div>`;
+        fishListEl.innerHTML = `<div class="list-state">Loading active items menu...</div>`;
         const res = await fetch(getEndpoint("/api/admin/fish"));
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
@@ -735,8 +745,8 @@
         if (!data || data.length === 0) {
           fishListEl.innerHTML = `
             <div class="list-state">
-              🐟 No active fish in today's menu.<br>
-              Tap <strong>"+ Add Fish"</strong> below to add one.
+              🛒 No active items in today's menu.<br>
+              Tap <strong>"+ Add Item"</strong> below to add one.
             </div>
           `;
           deactivateAllBtn.disabled = true;
@@ -750,9 +760,13 @@
           const card = document.createElement("div");
           card.className = "fish-item-card";
 
+          const type = (item.type || "fish").toLowerCase();
+          const typeBadge = type === "chicken" ? "🐔 Chicken" : type === "beef" ? "🥩 Beef" : "🐟 Fish";
+          const defaultEmoji = type === "chicken" ? "🐔" : type === "beef" ? "🥩" : "🐟";
+
           const imageHtml = item.image_url
-            ? `<img src="${item.image_url}" alt="${item.name_en}" class="fish-item-thumb" onerror="this.outerHTML='<div class=\\'fish-item-thumb\\'>🐟</div>'">`
-            : `<div class="fish-item-thumb">🐟</div>`;
+            ? `<img src="${item.image_url}" alt="${item.name_en}" class="fish-item-thumb" onerror="this.outerHTML='<div class=\\'fish-item-thumb\\'>${defaultEmoji}</div>'">`
+            : `<div class="fish-item-thumb">${defaultEmoji}</div>`;
 
           card.innerHTML = `
             <div class="fish-item-left">
@@ -760,7 +774,10 @@
               <div class="fish-item-details">
                 <span class="fish-item-name-ml">${item.name_ml}</span>
                 <span class="fish-item-name-en">${item.name_en}</span>
-                <span class="fish-item-price">₹${item.price}</span>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:2px;">
+                  <span class="fish-item-price">₹${item.price}</span>
+                  <span style="font-size:0.75rem; background:#eef2f5; padding:2px 6px; border-radius:6px; color:#555;">${typeBadge}</span>
+                </div>
               </div>
             </div>
             <button class="btn-deactivate" onclick="deactivateFish('${item.row_id}', this)">
@@ -771,10 +788,10 @@
         });
 
       } catch (err) {
-        console.error("Failed to load active fish:", err);
+        console.error("Failed to load active items:", err);
         fishListEl.innerHTML = `
           <div class="list-state" style="color: #c0392b;">
-            ⚠️ Could not load active fish menu. Check backend connection.
+            ⚠️ Could not load active items menu. Check backend connection.
           </div>
         `;
       }
@@ -782,7 +799,7 @@
 
     // ============ DEACTIVATE SINGLE FISH ============
     async function deactivateFish(rowId, btn) {
-      if (!confirm("Are you sure you want to deactivate this fish?")) return;
+      if (!confirm("Are you sure you want to deactivate this item?")) return;
 
       btn.disabled = true;
       btn.textContent = "Removing...";
@@ -797,7 +814,7 @@
         if (!res.ok) throw new Error("Failed to deactivate");
         await loadActiveFish();
       } catch (err) {
-        alert("Failed to deactivate fish: " + err.message);
+        alert("Failed to deactivate item: " + err.message);
         btn.disabled = false;
         btn.textContent = "Deactivate";
       }
@@ -805,7 +822,7 @@
 
     // ============ DEACTIVATE ALL FISH ============
     async function deactivateAllFish() {
-      if (!confirm("Are you sure you want to deactivate ALL fish in today's menu?")) return;
+      if (!confirm("Are you sure you want to deactivate ALL items in today's menu?")) return;
 
       deactivateAllBtn.disabled = true;
       deactivateAllBtn.textContent = "Deactivating...";
@@ -865,6 +882,7 @@
       fd.append("name_en", nameEn);
       fd.append("price", priceVal);
       if (note) fd.append("note", note);
+      fd.append("type", document.getElementById("itemType").value || "fish");
 
       submitBtn.disabled = true;
       submitBtn.textContent = "Uploading...";
@@ -882,17 +900,17 @@
           throw new Error(errMsg);
         }
 
-        // Success: close popup, reset form, reload active fish list
+        // Success: close popup, reset form, reload active items list
         submitBtn.disabled = false;
-        submitBtn.textContent = "Add Fish";
+        submitBtn.textContent = "Add Item";
         closeAddFish();
         await loadActiveFish();
 
       } catch (err) {
-        console.error("Add fish error:", err);
-        showError(err.message || "Failed to add fish. Please try again.");
+        console.error("Add item error:", err);
+        showError(err.message || "Failed to add item. Please try again.");
         submitBtn.disabled = false;
-        submitBtn.textContent = "Add Fish";
+        submitBtn.textContent = "Add Item";
       }
     });
 
